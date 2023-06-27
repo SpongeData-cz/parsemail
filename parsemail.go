@@ -319,6 +319,14 @@ func decodeEmbeddedFile(part *multipart.Part) (ef EmbeddedFile, err error) {
 		return
 	}
 
+	_, params, _ := parseContentType(part.Header.Get("Content-Type"))
+	if name, ok := params["name"]; ok {
+		ef.Filename = name
+	} else {
+		err = fmt.Errorf("unknown filename")
+		return
+	}
+
 	ef.CID = strings.Trim(cid, "<>")
 	ef.Data = decoded
 	ef.ContentType = part.Header.Get("Content-Type")
@@ -454,6 +462,7 @@ type Attachment struct {
 // EmbeddedFile with content id, content type and data (as a io.Reader)
 type EmbeddedFile struct {
 	CID         string
+	Filename    string
 	ContentType string
 	Data        io.Reader
 }
