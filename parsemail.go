@@ -232,39 +232,40 @@ func parseMultipartMixed(msg io.Reader, boundary string) (textBody, htmlBody str
 			return textBody, htmlBody, attachments, embeddedFiles, err
 		}
 
-		if contentType == contentTypeMultipartAlternative {
+		switch contentType {
+		case contentTypeMultipartAlternative:
 			textBody, htmlBody, embeddedFiles, err = parseMultipartAlternative(part, params["boundary"])
 			if err != nil {
 				return textBody, htmlBody, attachments, embeddedFiles, err
 			}
-		} else if contentType == contentTypeMultipartRelated {
+
+		case contentTypeMultipartRelated:
 			textBody, htmlBody, embeddedFiles, err = parseMultipartRelated(part, params["boundary"])
 			if err != nil {
 				return textBody, htmlBody, attachments, embeddedFiles, err
 			}
-		} else if contentType == contentTypeTextPlain {
-			ppContent, err := ioutil.ReadAll(part)
-			if err != nil {
-				return textBody, htmlBody, attachments, embeddedFiles, err
-			}
 
-			textBody += strings.TrimSuffix(string(ppContent[:]), "\n")
-		} else if contentType == contentTypeTextHtml {
-			ppContent, err := ioutil.ReadAll(part)
-			if err != nil {
-				return textBody, htmlBody, attachments, embeddedFiles, err
-			}
+		default:
+			if isAttachment(part) {
+				at, err := decodeAttachment(part)
+				if err != nil {
+					return textBody, htmlBody, attachments, embeddedFiles, err
+				}
 
-			htmlBody += strings.TrimSuffix(string(ppContent[:]), "\n")
-		} else if isAttachment(part) {
-			at, err := decodeAttachment(part)
-			if err != nil {
-				return textBody, htmlBody, attachments, embeddedFiles, err
-			}
+				attachments = append(attachments, at)
+			} else {
+				ppContent, err := ioutil.ReadAll(part)
+				if err != nil {
+					return textBody, htmlBody, attachments, embeddedFiles, err
+				}
 
-			attachments = append(attachments, at)
-		} else {
-			return textBody, htmlBody, attachments, embeddedFiles, fmt.Errorf("Unknown multipart/mixed nested mime type: %s", contentType)
+				switch contentType {
+				case contentTypeTextPlain:
+					textBody += strings.TrimSuffix(string(ppContent[:]), "\n")
+				case contentTypeTextHtml:
+					htmlBody += strings.TrimSuffix(string(ppContent[:]), "\n")
+				}
+			}
 		}
 	}
 
@@ -492,7 +493,7 @@ type Email struct {
 	ResentMessageID string
 
 	ContentType string
-	Content io.Reader
+	Content     io.Reader
 
 	HTMLBody string
 	TextBody string
