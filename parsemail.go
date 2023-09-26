@@ -304,7 +304,7 @@ func decodeContent(content io.Reader, encoding string) (io.Reader, error) {
 		}
 
 		return bytes.NewReader(b), nil
-	case "7bit":
+	case "8bit":
 		dd, err := io.ReadAll(content)
 		if err != nil {
 			return nil, err
